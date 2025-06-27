@@ -10,7 +10,7 @@ local tostring2 = tostring
 local log
 local loglevel = string.upper(arg[1] or "INFO")
 local logging = require("logging")
-if string.find(_VERSION, "5.2") or string.find(_VERSION, "5.3") then
+if string.find(_VERSION, "5.2") or string.find(_VERSION, "5.3") or string.find(_VERSION, "5.4") then
    local logger = require "logging.console"
    log = logger("%message")
 else

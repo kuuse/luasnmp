@@ -932,12 +932,12 @@ function __trap(session, msg)
       -- Convert variable bindings
       local vlist
       if string.find(snmp.getversion(), "5.4") then
-	 vlist = {{oid = uptimeName, type = mib.type("sysUpTime"), value = uptimeVal}}
+        vlist = {{oid = uptimeName, type = mib.type("sysUpTime"), value = uptimeVal}}
       elseif string.find(snmp.getversion(), "5.3") then
-	 -- Note: we don't get a reasonable type value for sysUpTimeInstance in net-snmp 5.3 
-	 vlist = {{oid=uptimeName, type=mib.type("sysUpTime"), value = uptimeVal}}
+        -- Note: we don't get a reasonable type value for sysUpTimeInstance in net-snmp 5.3
+        vlist = {{oid=uptimeName, type=mib.type("sysUpTime"), value = uptimeVal}}
       else
-	 vlist = {{oid=uptimeName, type=mib.type(uptimeName), value = uptimeVal}}
+        vlist = {{oid=uptimeName, type=mib.type(uptimeName), value = uptimeVal}}
       end
       string.gsub(vbs, "([^%s]+)%s+([^%s]+)%s*",
 		  function(name, val)

@@ -759,7 +759,7 @@ static int nm_snmp_open(lua_State *L) {
     lua_pushstring(L, "user");
     lua_gettable(L, -2);
     if (!lua_isnil(L, -1)){
-      nm_cmu_session.securityName = (char *) lua_tostring(L, -1);
+      nm_cmu_session.securityName = (const char *) lua_tostring(L, -1);
       nm_cmu_session.securityNameLen = strlen(lua_tostring(L, -1));
     }
     lua_remove(L,-1);
@@ -2431,6 +2431,7 @@ static void nm_snmp_config_parser(const char *token, char *line)
  *----------------------------------------------------------------------------*/
 static int nm_snmp_init(lua_State *L){
   int i;
+  int LUA_SNMP_MIBS = -1;
   struct config_line *cl;
 
   lua_ref = L;
@@ -2442,8 +2443,8 @@ static int nm_snmp_init(lua_State *L){
 
   /* option allowing to NOT load mibs */
   lua_getglobal(L, "LUA_SNMP_MIBS");
-  int LUA_SNMP_MIBS = (int)(lua_isnil(L, -1) ||
-                            lua_toboolean(L, -1));
+  LUA_SNMP_MIBS = (int)(lua_isnil(L, -1) ||
+                        lua_toboolean(L, -1));
   lua_pop(L, 1);
 
   for (i=1; ;i++){

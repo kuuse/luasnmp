@@ -58,7 +58,7 @@ int f_isoid(char *str);
 void f_oid2str(oid *objid, int objidlen, char *oidbuf);
 int f_str2oid(oid *objid, char *oidbuf, int max_subid);
 int f_mibnode2oid(struct snmp_mib_tree *tp, oid *objid);
-struct snmp_mib_tree *f_getmibnode(char *buf, oid *objid, int *objidlen);
+struct snmp_mib_tree *f_getmibnode(const char *buf, oid *objid, int *objidlen);
 struct snmp_mib_tree *f_var2mibnode(lua_State *L, oid *objid, int *objidlen);
 int f_prim_err(int cod_cmu);
 int f_create_vb(lua_State *L, struct variable_list *var);

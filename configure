@@ -1,13 +1,502 @@
-#! /bin/sh
-case `uname` in
-     Linux)
-       cp -i config.linux config
-       echo "Copied: config.linux => config"
-     ;;
-     *)
-       cp -i config.cygwin config
-       echo "Copied: config.cygwin => config"
-     ;;
+#! /usr/bin/env bash
+
+# Configure script to optionally add/override variables to the end of the 'config' file.
+
+SCRIPT_NAME=$(readlink -f "$0")
+SCRIPT_PATH=$(dirname "${SCRIPT_NAME}")
+
+usage() {
+
+cat <<HEREDOC
+
+Description:
+  This script adds configuration variables to the end of the existing file 'config',
+  which has the effect of overriding the hardcoded variables defined in 'config'.
+  The 'config' may always be tweaked manually, either with or without running this script.
+
+  When done, run 'make' and 'make install' to compile and install 'luasnmp', respectively.
+
+  NOTE:
+  This script allows using custom paths for both Lua and Net-SNMP.
+  If the Net-SNMP libraries are installed in a custom (non-default) path,
+  the 'luasnmp' 'snmp/core.so' module is linked with the 'rpath' linker directive.
+  This avoids the need of setting LD_LIBRARY_PATH.
+
+Configuration:
+  -h, --help              display this help and exit
+
+Installation directories:
+  --prefix=PREFIX         install files in PREFIX
+                          [$PREFIX]
+
+By default, 'make install' will install 'luasnmp' in
+'/usr/local/lib' and '/usr/local/share'.  You can specify
+an installation prefix other than '/usr/local' using '--prefix',
+for instance '--prefix=$HOME'.
+
+By default, 'luasnmp' is installed in the following directory tree:
+
+    $PREFIX
+    ├── lib
+    │   └── lua
+    │       └── 5.4
+    │           └── snmp
+    │               └── core.so
+    └── share
+        ├── lua
+        │   └── 5.4
+        │       ├── snmp.lua
+        │       └── trapd.lua
+        └── doc
+            └── luasnmp/
+
+Fine tuning of the installation directories:
+  --libdir=DIR            LuaSnmp object code library (core.$EXT) [PREFIX/lib/lua/<LUA_VERSION>/snmp]
+  --sharedir=DIR          LuaSnmp script library (snmp.lua) [PREFIX/share/lua/<LUA_VERSION>]
+  --docdir=DIR            LuaSnmp documentation [PREFIX/share/doc/luasnmp]
+
+Compiler Options:
+  --with-cc=CC                    use CC to compile (default=gcc).
+  --with-linkcc=CC                use CC to link (default=gcc).
+  --with-ar=AR                    use AR as the archiver.
+  --with-cflags=CFLAGS            use CFLAGS as compile time arguments.
+  --with-ldflags=LDFLAGS          use LDFLAGS as link time arguments to ld.
+  --with-libs=LIBS                use LIBS as link time arguments to ld.
+  --with-lua=LUA                  use LUA as Lua interpreter (default=lua, or lua\$LUAVERSION if LUAVERSION is set)
+  --with-luaversion=LUAVERSION    use an alternative LUAVERSION of the Lua interpreter (default=empty).
+  --with-luaincdir=LUAINC         use alternative path to Lua header files (default=$PREFIX/include/lua).
+  --with-lualibdir=LUALIB         use alternative path to Lua libraries (default=$PREFIX/lib).
+  --with-net-snmp-config=PATH     Use Net-SNMP's 'net-snmp-config' to get
+                                  compiler/linker directives for Net-SNMP.
+                                  [/usr/bin/net-snmp-config]
+  --with-net-snmp-lib-dir=PATH    Use an alternative path to 'libnetsnmp.so*', which is linked to 'snmp/core.so'.
+                                  Only use this option if 'net-snmp-config --libs' returns unexpected output (default=empty).
+
+Some influential environment variables:
+  CC          C compiler command
+  CFLAGS      C compiler flags
+  LDFLAGS     linker flags, e.g. -L<lib dir> if you have libraries in a
+              nonstandard directory <lib dir>
+  LIBS        libraries to pass to the linker, e.g. -l<library>
+  CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
+              you have headers in a nonstandard directory <include dir>
+  CPP         C preprocessor
+
+HEREDOC
+
+}
+
+errmsg() {
+  if [ -n "$1" ];then
+    printf "\nERROR: %s\n" "$1"
+  fi
+
+cat <<HEREDOC
+
+Type
+
+./configure --help
+
+to see all options.
+
+HEREDOC
+
+  exit 1
+}
+
+# Autodetect OS, set PREFIX accordingly.
+# PREFIX is the only variable used in the help message,
+# so it must be set in case of help.
+# --------------------------------------------------------------------------------
+UNAME="$(uname)"
+PREFIX=/usr/local
+if [ "$UNAME" = Linux ] ; then PREFIX=/usr; fi
+# --------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------
+# Parse and manage command-line options
+# --------------------------------------------------------------------------------
+# https://stackoverflow.com/questions/402377/using-getopts-to-process-long-and-short-command-line-options
+# https://stackoverflow.com/questions/1527049/how-can-i-join-elements-of-a-bash-array-into-a-delimited-string
+# Single-char join
+# function join_by { local IFS="$1"; shift; echo "$*"; }
+# Multi-char join
+function join_by {
+  local d=${1-} f=${2-}
+  if shift 2; then
+    printf %s "$f" "${@/#/$d}"
+  fi
+}
+
+function space_check {
+  if [[ "$1" = *" "* ]]; then
+    errmsg "The variable '$2' cannot contains spaces!"
+  fi
+}
+
+long_options_with_args=(
+  "prefix"
+  "libdir"
+  "sharedir"
+  "docdir"
+  "with-cc"
+  "with-linkcc"
+  "with-ar"
+  "with-cflags"
+  "with-ldflags"
+  "with-libs"
+  "with-lua"
+  "with-luaversion"
+  "with-luaincdir"
+  "with-lualibdir"
+  "with-net-snmp-config"
+  "with-net-snmp-lib-dir"
+)
+long_options_without_args=(
+  "help"
+)
+# Join all long options that require args.
+# Note the extra ':' at the end.
+long_options_with_args_concatenated=$(join_by ":," "${long_options_with_args[@]}"):
+long_options_without_args_concatenated=$(join_by "," "${long_options_without_args[@]}")
+long_options=${long_options_with_args_concatenated},${long_options_without_args_concatenated}
+# Declare all short options as a single string.
+# Any short option that requires an argument should be followed by an ':' (none in this case).
+short_options="h"
+# options may be followed by one colon to indicate they have a required argument
+if ! options=$(getopt -o $short_options -l "$long_options" -- "$@")
+then
+  # something went wrong, getopt will put out an error message for us
+  exit 1
+fi
+
+set -- $options
+prefix=
+libdir=
+sharedir=
+docdir=
+cc=
+linkcc=
+ar=
+cflags=
+ldflags=
+libs=
+lua=
+luaversion=
+luaincdir=
+lualibdir=
+net_snmp_config=
+net_snmp_lib_dir=
+while [ $# -gt 0 ]
+do
+    case $1 in
+      # for options with required arguments, an additional shift is required
+      --prefix                ) prefix="$2"          ; shift;;
+      --libdir                ) libdir="$2"          ; shift;;
+      --sharedir              ) sharedir="$2"        ; shift;;
+      --docdir                ) docdir="$2"          ; shift;;
+      --with-cc               ) cc="$2"              ; shift;;
+      --with-linkcc           ) linkcc="$2"          ; shift;;
+      --with-ar               ) ar="$2"              ; shift;;
+      --with-cflags           ) cflags="$2"          ; shift;;
+      --with-ldflags          ) ldflags="$2"         ; shift;;
+      --with-libs             ) libs="$2"            ; shift;;
+      --with-lua              ) lua="$2"             ; shift;;
+      --with-luaversion       ) luaversion="$2"      ; shift;;
+      --with-luaincdir        ) luaincdir="$2"       ; shift;;
+      --with-lualibdir        ) lualibdir="$2"       ; shift;;
+      --with-net-snmp-config  ) net_snmp_config="$2" ; shift;;
+      --with-net-snmp-lib-dir ) net_snmp_lib_dir="$2" ; shift;;
+      -h|--help) usage ; exit 0;;
+      (--) shift; break;;
+      (-*) echo "$0: error - unrecognized option $1" 1>&2; exit 1;;
+      (*) break;;
+    esac
+    shift
+done
+
+# If '--help' option was given, this script exits here.
+
+# Do some command-line check
+# Remove single quotes and convert all pathgs to absolute paths.
+if [ -n "$prefix" ];then
+   prefix=${prefix//\'/};
+   prefix="$(readlink -f "$prefix")"
+   PREFIX=$prefix
+fi
+if [ -n "$libdir" ];then
+   libdir=${libdir//\'/};
+   libdir="$(readlink -f "$libdir")"
+   LUASNMP_LIBDIR=$libdir
+fi
+if [ -n "$sharedir" ];then
+   sharedir=${sharedir//\'/};
+   sharedir="$(readlink -f "$sharedir")"
+   LUASNMP_SHAREDIR=$sharedir
+fi
+if [ -n "$docdir" ];then
+   docdir=${docdir//\'/};
+   docdir="$(readlink -f "$docdir")"
+   LUASNMP_DOCDIR=$docdir
+fi
+if [ -n "$cc" ];then
+   cc=${cc//\'/};
+   cc="$(readlink -f "$cc")"
+fi
+if [ -n "$linkcc" ];then
+   linkcc=${linkcc//\'/};
+   linkcc="$(readlink -f "$linkcc")"
+fi
+if [ -n "$ar" ];then
+   ar=${ar//\'/};
+   ar="$(readlink -f "$ar")"
+fi
+if [ -n "$cflags" ];then
+   cflags=${cflags//\'/};
+   CFLAGS="$cflags"
+fi
+if [ -n "$ldflags" ];then
+   ldflags=${ldflags//\'/};
+   LDFLAGS="$ldflags"
+fi
+if [ -n "$libs" ];then
+   libs=${libs//\'/};
+   libs="$(readlink -f "$libs")"
+   LIBS="$libs"
+fi
+if [ -n "$lua" ];then
+   lua=${lua//\'/};
+   lua="$(readlink -f "$lua")"
+fi
+if [ -n "$luaversion" ];then
+   luaversion=${luaversion//\'/};
+fi
+if [ -n "$luaincdir" ];then
+   luaincdir=${luaincdir//\'/};
+   luaincdir="$(readlink -f "$luaincdir")"
+fi
+if [ -n "$lualibdir" ];then
+   lualibdir=${lualibdir//\'/};
+   lualibdir="$(readlink -f "$lualibdir")"
+fi
+if [ -n "$net_snmp_config" ];then
+   net_snmp_config=${net_snmp_config//\'/};
+   net_snmp_config="$(readlink -f "$net_snmp_config")"
+fi
+if [ -n "$net_snmp_lib_dir" ];then
+   net_snmp_lib_dir=${net_snmp_lib_dir//\'/};
+   net_snmp_lib_dir="$(readlink -f "$net_snmp_lib_dir")"
+fi
+
+# --------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------
+# Get variables.
+# Try to autodetect the variables if they are not set explicit from the command-line.
+# --------------------------------------------------------------------------------
+if [ -n "$lua" ];then
+  LUA="$lua"
+  if [ ! -f "$LUA" ];then
+    errmsg "Cannot find the explitly set Lua executable '$lua'! Specify another Lua executable path using the option '--with-lua=ANOTHER_LUA'."
+  fi
+  # Test if the given file is a Lua executable
+  if ! "$LUA" -v 2>&1 | grep -q Lua; then
+    errmsg "The explitly set Lua executable '$lua' doesn't seem to be a valid Lua interpreter! Specify a valid Lua executable path using the option '--with-lua=VALID_LUA'."
+  fi
+elif [ -n "$luaversion" ];then
+  LUA="$(which "lua${luaversion}")"
+  if [ -z "$LUA" ];then
+    errmsg "Cannot find Lua executable using the explicit version '$luaversion'! Specify the Lua executable path using the option '--with-lua=LUA'."
+  fi
+else
+  LUA="$(which lua)"
+  if [ -z "$LUA" ];then
+    errmsg "Cannot find any Lua executable in PATH! Either install Lua, or specify the Lua executable path using the option '--with-lua=LUA'."
+  fi
+fi
+LUA_VERSION="$("$LUA" -v 2>&1 | cut -d' ' -f2)"
+LUA_VERSION_NUMERIC="$(echo "$LUA_VERSION" | cut -d'.' -f1-2 | sed 's/\.//')"
+case "$LUA_VERSION_NUMERIC" in
+    ''|*[!0-9]*) errmsg "Cannot get Lua version! Specify the Lua version using the option '--with-luaversion=LUAVERSION'." ;;
+    *) : ;; # OK
 esac
-echo 'Please customize the file "config" to your needs.'
-echo 'Then build by executing "make".'
+# Get parent dir from Lua executable
+LUA_PREFIX_FROM_LUA_PATH=$(dirname "$(dirname "$LUA")")
+
+# Override LUA_PREFIX_FROM_LUA_PATH if it differs from PREFIX
+LUA_PREFIX=$LUA_PREFIX_FROM_LUA_PATH
+
+# Find Lua header file
+LUA_INC=$(dirname "$(find "$LUA_PREFIX/include" -name "lua.h")")
+
+# Find Lua library file, if any (older versions of Lua don't have any)
+LUA_LIB="$(find "$LUA_PREFIX/lib" -name "liblua.*")"
+if [ -n "$LUA_LIB" ];then
+  LUA_LIB="$(dirname "$LUA_LIB")"
+fi
+
+# Find 'net-snmp-config' executable
+if [ -n "$net_snmp_config" ];then
+  # First check if 'net-snmp-config' is explicitly set from the command-line.
+  NET_SNMP_CONFIG="$net_snmp_config"
+  if [ ! -f "$NET_SNMP_CONFIG" ];then
+    errmsg "Cannot find the explitly set 'net-snmp-config' executable '$net_snmp_config'! Specify another 'net-snmp-config' executable using the option '--with-net-snmp-config=ANOTHER_NET_SNMP_CONFIG'."
+  fi
+  # Test if the given file is a Lua executable
+  if ! "$NET_SNMP_CONFIG" -v 2>&1 | grep -q net-snmp-config; then
+    errmsg "The explitly set 'net-snmp-config' executable '$net_snmp_config' doesn't seem to be valid! Specify a valid executable using the option '--with-net-snmp-config=VALID_NET_SNMP_CONFIG'."
+  fi
+else
+  # Then try to auto-detect 'net-snmp-config'.
+  NET_SNMP_CONFIG="$(which net-snmp-config)"
+  if [ -z "$NET_SNMP_CONFIG" ];then
+    errmsg "Cannot find any 'net-snmp-config' executable in PATH! Either install Net-SNMP, or specify '--with-net-snmp-config=NET_SNMP_CONFIG'."
+  fi
+fi
+
+# Find 'net-snmp' lib dir, so 'snmp/core.so' can link to 'libnetsnmp.so'.
+# The path should normally be obtained by 'net-snmp-config --libdir', but this option permits to override that path.
+if [ -n "$net_snmp_lib_dir" ];then
+  # First check if 'net-snmp-lib-dir' is explicitly set from the command-line.
+  NET_SNMP_LIB_DIR="$net_snmp_lib_dir"
+  echo DEBUG NET_SNMP_LIB_DIR $NET_SNMP_LIB_DIR
+  if [ ! -e "$NET_SNMP_LIB_DIR" ];then
+    errmsg "Cannot find the explitly set 'net-snmp-lib-dir' directory '$net_snmp_lib_dir'! Specify another directory by using the option '--with-net-snmp-lib-dir=ANOTHER_NET_SNMP_LIB_DIR'."
+  fi
+  # Test if the given directory contains the library we need.
+  if [ -z "$(find "$NET_SNMP_LIB_DIR" -name "libnetsnmp.so*")" ]; then
+    errmsg "The explitly set 'net-snmp-lib-dir' directory '$net_snmp_lib_dir' doesn't seem to contain any Net-SNMP libraries! Specify a valid directory using the option '--with-net-snmp-lib-dir=VALID_NET_SNMP_LIB_DIR'."
+  fi
+else
+  # Try to auto-detect 'net-snmp-lib-dir'.
+  NET_SNMP_LIB_DIR="$("$NET_SNMP_CONFIG" --libdir | sed 's/-L//')"
+  if [ -z "$NET_SNMP_LIB_DIR" ];then
+    errmsg "Cannot obtain 'net-snmp-lib-dir' from '$NET_SNMP_CONFIG --libs', which is weird. Check your Net-SNMP installation."
+  fi
+fi
+
+# Set default LDFLAGS unless explicitly set.
+# Add 'net-snmp-lib-dir' to the runtime library search path, so 'snmp/core.so' can find 'libnetsnmp.so' without setting LD_LIBRARY_PATH.
+if [ -z "$LDFLAGS" ];then
+  LDFLAGS="$("$NET_SNMP_CONFIG" --ldflags) -O -shared -fPIC -Wl,-rpath,$NET_SNMP_LIB_DIR"
+fi
+
+# Do not override LIBS unless explicitly set.
+if [ -z "$LIBS" ];then
+  : # Do nothing
+fi
+
+# Shared lib file extension
+EXT=so
+if [ "$UNAME" = Cygwin ] ; then EXT=dll; fi
+
+# 'luasnmp' install directories: lib, share, doc
+if [ -z "$LUASNMP_LIBDIR" ];then
+  # NOTE: The 'snmp/' subdirectory (hardcoded) is added by the Makefile.
+  LUASNMP_LIBDIR="$PREFIX/lib/lua/$LUA_VERSION"
+fi
+if [ -z "$LUASNMP_SHAREDIR" ];then
+  LUASNMP_SHAREDIR="$PREFIX/share/lua/$LUA_VERSION"
+fi
+if [ -z "$LUASNMP_DOCDIR" ];then
+  LUASNMP_DOCDIR="$PREFIX/share/doc/luasnmp"
+fi
+
+# --------------------------------------------------------------------------------
+# Show settings
+# --------------------------------------------------------------------------------
+cat <<HEREDOC
+
+--------------------------------------------------------------------------------
+Settings:
+--------------------------------------------------------------------------------
+Command-line:
+--------------------------------------------------------------------------------
+prefix              : $prefix
+libdir              : $libdir
+sharedir            : $sharedir
+docdir              : $docdir
+cc                  : $cc
+linkcc              : $linkcc
+ar                  : $ar
+cflags              : $cflags
+ldflags             : $ldflags
+libs                : $libs
+lua                 : $lua
+luaversion          : $luaversion
+luaincdir           : $luaincdir
+lualibdir           : $lualibdir
+net_snmp_config     : $net_snmp_config
+--------------------------------------------------------------------------------
+Auto-detected:
+--------------------------------------------------------------------------------
+PREFIX              : $PREFIX
+LUASNMP_LIBDIR      : $LUASNMP_LIBDIR
+LUASNMP_SHAREDIR    : $LUASNMP_SHAREDIR
+LUASNMP_DOCDIR      : $LUASNMP_DOCDIR
+LUA                 : $LUA
+LUA_VERSION         : $LUA_VERSION
+LUA_VERSION_NUMERIC : $LUA_VERSION_NUMERIC
+LUA_PREFIX          : $LUA_PREFIX
+LUA_INC             : $LUA_INC
+LUA_LIB             : $LUA_LIB
+LDFLAGS             : $LDFLAGS
+LIBS                : $LIBS
+NET_SNMP_CONFIG     : $NET_SNMP_CONFIG
+NET_SNMP_LIB_DIR    : $NET_SNMP_LIB_DIR
+EXT                 : $EXT
+--------------------------------------------------------------------------------
+Environment variables (only if set from the command-line or in the shell):
+--------------------------------------------------------------------------------
+CC                  : $CC
+CFLAGS              : $CFLAGS
+LDFLAGS             : $LDFLAGS
+LIBS                : $LIBS
+CPPFLAGS            : $CPPFLAGS
+CPP                 : $CPP
+
+HEREDOC
+
+
+# Make backup if not already done.
+if [ ! -f "$SCRIPT_PATH/config.original" ];then
+  cp "$SCRIPT_PATH/config" "$SCRIPT_PATH/config.original"
+fi
+# Get a fresh copy from the backup.
+if [ -f "$SCRIPT_PATH/config.original" ];then
+  cp "$SCRIPT_PATH/config.original" "$SCRIPT_PATH/config"
+fi
+
+# Append all required variables to the end of 'config'
+
+cat <<HEREDOC >> "$SCRIPT_PATH/config"
+# ================================================================================
+# Variables added by ./configure:
+# ================================================================================
+# 'luasnmp' installation
+INSTALL_ROOT    = $PREFIX
+INSTALL_LIB     = $LUASNMP_LIBDIR
+INSTALL_SHARE   = $LUASNMP_SHAREDIR
+INSTALL_DOC     = $LUASNMP_DOCDIR
+# Lua paths
+LUA             = $LUA_PREFIX
+LV              = $LUA_VERSION
+V               = $LUA_VERSION_NUMERIC
+LUABIN          = $LUA
+LUAINC          = $LUA_INC
+LUALIB          = $LUA_LIB
+LDFLAGS         = $LDFLAGS
+# Net-SNMP paths
+NETSNMP_CONFIG  = $NET_SNMP_CONFIG
+NETSNMP_LIB_DIR = $NET_SNMP_CONFIG
+# Misc.
+EXT             = $EXT
+# ================================================================================
+HEREDOC
+
+# Only override LIBS if explicitly set.
+if [ -n "$LIBS" ];then
+  echo "LIBS            = $LIBS" >> "$SCRIPT_PATH/config"
+fi
+
+echo "Now either tweak 'config', or run 'make."

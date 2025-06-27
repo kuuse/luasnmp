@@ -12,6 +12,7 @@
 #endif
 #include <net-snmp/library/asn1.h>
 #include <net-snmp/library/snmp_impl.h>
+#include <net-snmp/library/snmp.h>
 
 #ifndef WIN32
 #include <sys/param.h>
@@ -171,7 +172,7 @@ int f_mibnode2oid(struct snmp_mib_tree *tp, oid *objid) {
  * Dada uma string obtem o oid correspondente e o ponteiro na arvore MIB 
  *----------------------------------------------------------------------------*/
 
-struct snmp_mib_tree *f_getmibnode(char *buf, oid *objid, int *objidlen) {
+struct snmp_mib_tree *f_getmibnode(const char *buf, oid *objid, int *objidlen) {
   register char *pbuf;
   register char *paux;
   char *cbuf;
@@ -322,7 +323,7 @@ struct snmp_mib_tree *f_getmibnode(char *buf, oid *objid, int *objidlen) {
  * variavel lua   (string ou vbind)
  *----------------------------------------------------------------------------*/
 struct snmp_mib_tree *f_var2mibnode(lua_State *L, oid *objid, int *objidlen) {
-  char *s;
+  const char *s;
   if (lua_istable(L, -1)) {
     lua_pushstring(L, "oid");
     lua_gettable(L, -2);
@@ -330,12 +331,12 @@ struct snmp_mib_tree *f_var2mibnode(lua_State *L, oid *objid, int *objidlen) {
       lua_remove(L, -1);
       return NULL;
     }
-    s = (char *) lua_tostring(L, -1);
+    s = (const char *) lua_tostring(L, -1);
     lua_remove(L, -1);
   } else {
     if (!lua_isstring(L, -1))
       return NULL;
-    s = (char *) lua_tostring(L, -1);
+    s = (const char *) lua_tostring(L, -1);
   }
   return(f_getmibnode(s,objid,objidlen));
 }
@@ -858,7 +859,7 @@ struct variable_list *f_create_vl(lua_State *L, int prim_type) {
   case NM_TYPE_IPADDR:
     if (!lua_isstring(L, -1))
       return NULL;
-    strval = (char *)lua_tostring(L, -1);
+    strval = (const char *)lua_tostring(L, -1);
     if ((*((uint32_t *) strbuf) = inet_addr(strval)) == -1)
       return NULL;
     len = sizeof(uint32_t);
