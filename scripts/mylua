@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+lua -l "set_paths" "$@"

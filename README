@@ -41,6 +41,10 @@ LuaSNMP
 * Installation
   ------------
 
+  Updated installation instructions can be found in [USAGE.md](USAGE.md).
+  
+  Original installation instructions:
+
   Note, that the makefile configuration defines Lua 5.2 as the default Lua version.
   In order to build LuaSNMP for other Lua versions you either have to change
   the variables V and LV in the makefile configuration file config or specify

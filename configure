@@ -314,8 +314,13 @@ else
     errmsg "Cannot find any Lua executable in PATH! Either install Lua, or specify the Lua executable path using the option '--with-lua=LUA'."
   fi
 fi
-LUA_VERSION="$("$LUA" -v 2>&1 | cut -d' ' -f2)"
-LUA_VERSION_NUMERIC="$(echo "$LUA_VERSION" | cut -d'.' -f1-2 | sed 's/\.//')"
+# Lua versioning: 3 numbers separated by 2 dots, for example '5.4.8'.
+# Anyhow, internally, using '_VERSION', Lua only returns 2 numbers separated by 1 dot, i.e. '5.4'.
+# This is convenient when setting 'package.path' and 'package.cpath' to version-dependent paths from within Lua.
+# The numeric format is used to compare versions numerically.
+LUA_VERSION_FULL="$("$LUA" -v 2>&1 | cut -d' ' -f2)"        # 5.4.8
+LUA_VERSION="$(echo "$LUA_VERSION_FULL" | cut -d'.' -f1-2)" # 5.4
+LUA_VERSION_NUMERIC="${LUA_VERSION//.}"                     # 54
 case "$LUA_VERSION_NUMERIC" in
     ''|*[!0-9]*) errmsg "Cannot get Lua version! Specify the Lua version using the option '--with-luaversion=LUAVERSION'." ;;
     *) : ;; # OK
@@ -435,6 +440,7 @@ LUASNMP_LIBDIR      : $LUASNMP_LIBDIR
 LUASNMP_SHAREDIR    : $LUASNMP_SHAREDIR
 LUASNMP_DOCDIR      : $LUASNMP_DOCDIR
 LUA                 : $LUA
+LUA_VERSION_FULL    : $LUA_VERSION_FULL
 LUA_VERSION         : $LUA_VERSION
 LUA_VERSION_NUMERIC : $LUA_VERSION_NUMERIC
 LUA_PREFIX          : $LUA_PREFIX
