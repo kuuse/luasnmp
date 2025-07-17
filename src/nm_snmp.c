@@ -775,22 +775,41 @@ static int nm_snmp_open(lua_State *L) {
     /*
      *  Authentication Protocol
      */
+
     lua_pushstring(L, "authType");
     lua_gettable(L, -2);
     if (!lua_isnil(L, -1)){
       if (!strcmp(lua_tostring(L, -1), "MD5")){
-	nm_cmu_session.securityAuthProto = usmHMACMD5AuthProtocol;
-	nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_MD5_LEN;
-      } else if (!strcmp(lua_tostring(L, -1), "SHA")){
-	nm_cmu_session.securityAuthProto = usmHMACSHA1AuthProtocol;
-	nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
-      } else if (!strcmp(lua_tostring(L, -1), "NOAUTH")){
-	nm_cmu_session.securityAuthProto = usmHMACSHA1AuthProtocol;
-	nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_NOAUTH_LEN;
+        nm_cmu_session.securityAuthProto = usmHMACMD5AuthProtocol;
+        nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_MD5_LEN;
+      }
+      else if (!strcmp(lua_tostring(L, -1), "SHA")){
+        nm_cmu_session.securityAuthProto = usmHMACSHA1AuthProtocol;
+        nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
+      }
+      else if (!strcmp(lua_tostring(L, -1), "SHA-256")){
+        nm_cmu_session.securityAuthProto = usmHMAC192SHA256AuthProtocol;
+        nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
+      }
+      else if (!strcmp(lua_tostring(L, -1), "SHA-512")){
+        nm_cmu_session.securityAuthProto = usmHMAC384SHA512AuthProtocol;
+        nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
+      }
+      else if (!strcmp(lua_tostring(L, -1), "SHA-384")){
+        nm_cmu_session.securityAuthProto = usmHMAC256SHA384AuthProtocol;
+        nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
+      }
+      else if (!strcmp(lua_tostring(L, -1), "SHA-224")){
+        nm_cmu_session.securityAuthProto = usmHMAC128SHA224AuthProtocol;
+        nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
+      }
+      else if (!strcmp(lua_tostring(L, -1), "NOAUTH")){
+        nm_cmu_session.securityAuthProto = usmHMACSHA1AuthProtocol;
+        nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_NOAUTH_LEN;
       }
     }
     lua_remove(L, -1);
-    
+
     /*
      *  Encryption Protocol
      */
@@ -805,12 +824,20 @@ static int nm_snmp_open(lua_State *L) {
       }
 #endif
       else if (!strcmp(lua_tostring(L, -1), "AES")){
-	nm_cmu_session.securityPrivProto = usmAESPrivProtocol;
-	nm_cmu_session.securityPrivProtoLen = USM_PRIV_PROTO_AES_LEN;
+        nm_cmu_session.securityPrivProto = usmAESPrivProtocol;
+        nm_cmu_session.securityPrivProtoLen = USM_PRIV_PROTO_AES_LEN;
+      }
+      else if (!strcmp(lua_tostring(L, -1), "AES-192")){
+        nm_cmu_session.securityPrivProto = usmAES192PrivProtocol;
+        nm_cmu_session.securityPrivProtoLen = USM_PRIV_PROTO_AES_LEN;
+      }
+      else if (!strcmp(lua_tostring(L, -1), "AES-256")){
+        nm_cmu_session.securityPrivProto = usmAES256PrivProtocol;
+        nm_cmu_session.securityPrivProtoLen = USM_PRIV_PROTO_AES_LEN;
       }
       else if (!strcmp(lua_tostring(L, -1), "NOAUTH")){
-	nm_cmu_session.securityPrivProto = usmNoPrivProtocol;
-	nm_cmu_session.securityPrivProtoLen = USM_PRIV_PROTO_NOPRIV_LEN;
+        nm_cmu_session.securityPrivProto = usmNoPrivProtocol;
+        nm_cmu_session.securityPrivProtoLen = USM_PRIV_PROTO_NOPRIV_LEN;
       }
     }
     lua_remove(L, -1);
