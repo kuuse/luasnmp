@@ -787,22 +787,26 @@ static int nm_snmp_open(lua_State *L) {
         nm_cmu_session.securityAuthProto = usmHMACSHA1AuthProtocol;
         nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
       }
+#ifdef HAVE_EVP_SHA224
+      else if (!strcmp(lua_tostring(L, -1), "SHA-224")){
+        nm_cmu_session.securityAuthProto = usmHMAC128SHA224AuthProtocol;
+        nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
+      }
       else if (!strcmp(lua_tostring(L, -1), "SHA-256")){
         nm_cmu_session.securityAuthProto = usmHMAC192SHA256AuthProtocol;
+        nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
+      }
+#endif
+#ifdef HAVE_EVP_SHA384
+      else if (!strcmp(lua_tostring(L, -1), "SHA-384")){
+        nm_cmu_session.securityAuthProto = usmHMAC256SHA384AuthProtocol;
         nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
       }
       else if (!strcmp(lua_tostring(L, -1), "SHA-512")){
         nm_cmu_session.securityAuthProto = usmHMAC384SHA512AuthProtocol;
         nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
       }
-      else if (!strcmp(lua_tostring(L, -1), "SHA-384")){
-        nm_cmu_session.securityAuthProto = usmHMAC256SHA384AuthProtocol;
-        nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
-      }
-      else if (!strcmp(lua_tostring(L, -1), "SHA-224")){
-        nm_cmu_session.securityAuthProto = usmHMAC128SHA224AuthProtocol;
-        nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_SHA_LEN;
-      }
+#endif
       else if (!strcmp(lua_tostring(L, -1), "NOAUTH")){
         nm_cmu_session.securityAuthProto = usmHMACSHA1AuthProtocol;
         nm_cmu_session.securityAuthProtoLen = USM_AUTH_PROTO_NOAUTH_LEN;
@@ -827,6 +831,7 @@ static int nm_snmp_open(lua_State *L) {
         nm_cmu_session.securityPrivProto = usmAESPrivProtocol;
         nm_cmu_session.securityPrivProtoLen = USM_PRIV_PROTO_AES_LEN;
       }
+#ifdef NETSNMP_DRAFT_BLUMENTHAL_AES_04
       else if (!strcmp(lua_tostring(L, -1), "AES-192")){
         nm_cmu_session.securityPrivProto = usmAES192PrivProtocol;
         nm_cmu_session.securityPrivProtoLen = USM_PRIV_PROTO_AES_LEN;
@@ -835,6 +840,7 @@ static int nm_snmp_open(lua_State *L) {
         nm_cmu_session.securityPrivProto = usmAES256PrivProtocol;
         nm_cmu_session.securityPrivProtoLen = USM_PRIV_PROTO_AES_LEN;
       }
+#endif
       else if (!strcmp(lua_tostring(L, -1), "NOAUTH")){
         nm_cmu_session.securityPrivProto = usmNoPrivProtocol;
         nm_cmu_session.securityPrivProtoLen = USM_PRIV_PROTO_NOPRIV_LEN;
