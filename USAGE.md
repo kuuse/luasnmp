@@ -60,6 +60,25 @@ The `LDFLAGS` variable in `configure` automatically adds the `-rpath` directive 
         libz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007cc15585c000)
         libzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007cc154f42000)
 
+### How to use 'configure' with Nmap
+
+`luasnmp` may be used as a NSE library for `snmp-*` NSE scripts, as a replacement for the standard NSE `snmp` library.  
+The advantage with using `luasnmp` over the standard NSE `snmp` is the SNMPv3 support, which the standard NSE `snmp` lacks.
+
+If Nmap was built from source, `luasnmp` may be built using the Nmap executable to extract the Lua version, and the source code for headers and libraries (in the same subdirectory `liblua/` by default).  
+In this case, there is no need for a "stand-alone" Lua inetrpreter to be present.
+
+Example, with Nmap sources built in `/tmp/nmap-7.97/`, and installed as `/tmp/bin/nmap`:
+
+    ./configure --prefix=/usr --with-lua=/tmp/bin/nmap --with-luaincdir=/tmp/nmap-7.97/liblua/ --with-lualibdir=/tmp/nmap-7.97/liblua/
+    make
+    make install
+
+If Nmap was built from a package instead, the Lua header files and lib will not be available, and have to be installed separately (by Lua package or source code).  
+In such a case, the Lua version must match the Nmap Lua version.
+
+As with any Lua script, adjust `package.path` and `package.cpath` as needed in the calling NSE script to find the `luasnmp` module.
+
 ## Run `snmpwalk` using Lua
 
 Handling custom paths:

@@ -16,11 +16,24 @@ Description:
 
   When done, run 'make' and 'make install' to compile and install 'luasnmp', respectively.
 
+  If installing 'luasnmp' in a custom path, don't forget to include that path in 'package.path'/'package.cpath' in the calling script.
+
   NOTE:
   This script allows using custom paths for both Lua and Net-SNMP.
   If the Net-SNMP libraries are installed in a custom (non-default) path,
   the 'luasnmp' 'snmp/core.so' module is linked with the 'rpath' linker directive.
   This avoids the need of setting LD_LIBRARY_PATH.
+
+  NOTE about using 'luasnmp' with Nmap/NSE:
+  This configure script allows 'luasnmp' to be compiled as a NSE library.
+  If 'nmap' was compiled from source, 'lua.h' and 'lauxlib.h'
+  If 'nmap' was compiled from source, 'lua.h' and 'lauxlib.h'
+  In such a case, the 'lua' binary is not required to be present, as the Lua interpreter is linked into the 'nmap' binary.
+  On the other hand, In such a case, the 'lua' binary is not required to be present, as the Lua interpreter is linked into the 'nmap' binary.
+  Use the option '--with-lua=nmap' or '--with-nmap=/path/to/nmap' to compile as a NSE library.
+  This option is disabled by default.
+  As with a default installation: Don't forget to set 'package.path' and 'package.cpath' in the calling NSE script before including 'luasnmp'.
+  (Be careful not to clash the module name 'snmp' with the existing NSE 'snmp' module!)
 
 Configuration:
   -h, --help              display this help and exit
@@ -62,7 +75,13 @@ Compiler Options:
   --with-cflags=CFLAGS            use CFLAGS as compile time arguments.
   --with-ldflags=LDFLAGS          use LDFLAGS as link time arguments to ld.
   --with-libs=LIBS                use LIBS as link time arguments to ld.
-  --with-lua=LUA                  use LUA as Lua interpreter (default=lua, or lua\$LUAVERSION if LUAVERSION is set)
+  --with-lua=LUA|NMAP             use LUA as Lua interpreter (default=lua, or lua\$LUAVERSION if LUAVERSION is set)
+                                  if Nmap-embedded Lua is used instead (default=no, enable with 'nmap' or full path to 'nmap'),
+                                  the Lua source code included with the Nmap distribution will be used instead.
+                                  Note that Nmap must have been built from source for this option to work.
+                                  The '--with-luaincdir' should point to the 'lualib/' subdirectory within the Nmap distribution.
+                                  (If Nmap has been installed from a package, 'luasnmp' can still be used as a NSE library, but don't use this option.
+                                  Just set 'package.path' and 'package.cpath' to point to 'luasnmp' in the calling NSE script.)
   --with-luaversion=LUAVERSION    use an alternative LUAVERSION of the Lua interpreter (default=empty).
   --with-luaincdir=LUAINC         use alternative path to Lua header files (default=$PREFIX/include/lua).
   --with-lualibdir=LUALIB         use alternative path to Lua libraries (default=$PREFIX/lib).
@@ -217,6 +236,8 @@ done
 
 # If '--help' option was given, this script exits here.
 
+USE_NMAP=0
+
 # Do some command-line check
 # Remove single quotes and convert all pathgs to absolute paths.
 if [ -n "$prefix" ];then
@@ -265,8 +286,16 @@ if [ -n "$libs" ];then
    LIBS="$libs"
 fi
 if [ -n "$lua" ];then
-   lua=${lua//\'/};
-   lua="$(readlink -f "$lua")"
+  echo "DEBUG: lua=$lua"
+  lua=${lua//\'/};
+  # Check for 'nmap' instead of 'lua'
+  if [[ "${lua,,}" =~ nmap ]]; then
+    USE_NMAP=1
+    echo "DEBUG2: USING NMAP INSTEAD"
+  fi
+  echo "DEBUG2: lua=$lua"
+  lua="$(readlink -f "$lua")"
+  echo "DEBUG3: lua=$lua"
 fi
 if [ -n "$luaversion" ];then
    luaversion=${luaversion//\'/};
@@ -297,10 +326,16 @@ fi
 if [ -n "$lua" ];then
   LUA="$lua"
   if [ ! -f "$LUA" ];then
-    errmsg "Cannot find the explitly set Lua executable '$lua'! Specify another Lua executable path using the option '--with-lua=ANOTHER_LUA'."
+    errmsg "Cannot find the explicitly set Lua executable '$lua'! Specify another Lua executable path using the option '--with-lua=ANOTHER_LUA'."
   fi
+  # Test if the given file is a Nmap executable
+  if [ $USE_NMAP ] ; then
+    NMAP="$LUA"
+    if ! "$NMAP" --version 2>&1 | grep -q -i -Po 'lib\Klua-\d.\d.\d'; then
+      errmsg "The explitly set Nmap executable '$NMAP' doesn't seem to be a valid Nmap executable! Specify a valid Nmap executable path using the option '--with-lua=VALID_NMAP'."
+    fi
   # Test if the given file is a Lua executable
-  if ! "$LUA" -v 2>&1 | grep -q Lua; then
+  elif ! "$LUA" -v 2>&1 | grep -q Lua; then
     errmsg "The explitly set Lua executable '$lua' doesn't seem to be a valid Lua interpreter! Specify a valid Lua executable path using the option '--with-lua=VALID_LUA'."
   fi
 elif [ -n "$luaversion" ];then
@@ -318,7 +353,11 @@ fi
 # Anyhow, internally, using '_VERSION', Lua only returns 2 numbers separated by 1 dot, i.e. '5.4'.
 # This is convenient when setting 'package.path' and 'package.cpath' to version-dependent paths from within Lua.
 # The numeric format is used to compare versions numerically.
-LUA_VERSION_FULL="$("$LUA" -v 2>&1 | cut -d' ' -f2)"        # 5.4.8
+if [ $USE_NMAP ] ; then
+  LUA_VERSION_FULL="$("$NMAP" --version 2>&1 | grep -i -Po 'lib\Klua-\d.\d.\d' | cut -d- -f2)"        # 5.4.8
+else
+  LUA_VERSION_FULL="$("$LUA" -v 2>&1 | cut -d' ' -f2)"        # 5.4.8
+fi
 LUA_VERSION="$(echo "$LUA_VERSION_FULL" | cut -d'.' -f1-2)" # 5.4
 LUA_VERSION_NUMERIC="${LUA_VERSION//.}"                     # 54
 case "$LUA_VERSION_NUMERIC" in
@@ -331,14 +370,40 @@ LUA_PREFIX_FROM_LUA_PATH=$(dirname "$(dirname "$LUA")")
 # Override LUA_PREFIX_FROM_LUA_PATH if it differs from PREFIX
 LUA_PREFIX=$LUA_PREFIX_FROM_LUA_PATH
 
-# Find Lua header file
-LUA_INC=$(dirname "$(find "$LUA_PREFIX/include" -name "lua.h")")
+# Find Lua header files
+if [ -n "$luaincdir" ];then
+  LUA_INC="$luaincdir"
+else
+  LUA_INC="$LUA_PREFIX/include"
+fi
+if [ ! -e "$LUA_INC" ];then
+  EXTRA_MSG_FOR_NMAP=
+  if [ $USE_NMAP ] ; then
+    EXTRA_MSG_FOR_NMAP=" (This should probably be set to '/path/to/nmap-src/liblua/'.)"
+  fi
+  errmsg "The Lua include directory '$LUA_INC' does not exist! Use the option '--with-luaincdir=EXISTING_DIR'.$EXTRA_MSG_FOR_NMAP"
+fi
+LUA_INC=$(dirname "$(find "$LUA_INC" -name "lua.h")")
 
 # Find Lua library file, if any (older versions of Lua don't have any)
-LUA_LIB="$(find "$LUA_PREFIX/lib" -name "liblua.*")"
-if [ -n "$LUA_LIB" ];then
-  LUA_LIB="$(dirname "$LUA_LIB")"
+if [ -n "$lualibdir" ];then
+  LUA_LIB="$lualibdir"
+else
+  LUA_LIB="$LUA_PREFIX/lib"
 fi
+if [ ! -e "$LUA_LIB" ];then
+  EXTRA_MSG_FOR_NMAP=
+  if [ $USE_NMAP ] ; then
+    EXTRA_MSG_FOR_NMAP=" (This should probably be set to '/path/to/nmap-src/liblua/'.)"
+  fi
+  # Make the fatal error conditional.
+  # Older Lua version may not have any liblua.a
+  # Only exit if '--with-lua=/tmp/bin/nmap' and/or '--with-lualibdir' were explicitly set.
+  if [ -n "$lualibdir" ] || [ $USE_NMAP ];then
+    errmsg "The Lua lib directory '$LUA_LIB' does not exist! Use the option '--with-lualibdir=EXISTING_DIR'.$EXTRA_MSG_FOR_NMAP"
+  fi
+fi
+LUA_LIB="$(find "$LUA_LIB" -name "liblua.a")"
 
 # Find 'net-snmp-config' executable
 if [ -n "$net_snmp_config" ];then
