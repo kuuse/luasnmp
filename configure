@@ -286,16 +286,12 @@ if [ -n "$libs" ];then
    LIBS="$libs"
 fi
 if [ -n "$lua" ];then
-  echo "DEBUG: lua=$lua"
   lua=${lua//\'/};
   # Check for 'nmap' instead of 'lua'
   if [[ "${lua,,}" =~ nmap ]]; then
     USE_NMAP=1
-    echo "DEBUG2: USING NMAP INSTEAD"
   fi
-  echo "DEBUG2: lua=$lua"
   lua="$(readlink -f "$lua")"
-  echo "DEBUG3: lua=$lua"
 fi
 if [ -n "$luaversion" ];then
    luaversion=${luaversion//\'/};
@@ -429,7 +425,6 @@ fi
 if [ -n "$net_snmp_lib_dir" ];then
   # First check if 'net-snmp-lib-dir' is explicitly set from the command-line.
   NET_SNMP_LIB_DIR="$net_snmp_lib_dir"
-  echo DEBUG NET_SNMP_LIB_DIR $NET_SNMP_LIB_DIR
   if [ ! -e "$NET_SNMP_LIB_DIR" ];then
     errmsg "Cannot find the explitly set 'net-snmp-lib-dir' directory '$net_snmp_lib_dir'! Specify another directory by using the option '--with-net-snmp-lib-dir=ANOTHER_NET_SNMP_LIB_DIR'."
   fi
