@@ -8,7 +8,7 @@ local luasnmp = require "luasnmp.core"
 local mib = luasnmp.mib
 
 -- Lua version compatibility
-local unpack = unpack or table.unpack
+---local unpack = unpack or table.unpack
 
 if string.find(_VERSION, "5.1") then
    module("luasnmp", package.seeall)
@@ -34,9 +34,9 @@ mib.READCREATE = 4
 ------------------------------------------------------------------------------
 -- Init Mibs and SNMP client
 ------------------------------------------------------------------------------
-if (LUA_SNMP_MIBS == nil or LUA_SNMP_MIBS) then
+----if (LUA_SNMP_MIBS == nil or LUA_SNMP_MIBS) then
   mib.init()
-end
+---end
 
 ------------------------------------------------------------------------------
 -- Reverse 
@@ -819,6 +819,7 @@ end
 ---------------------------------------------------------------------------
 -- Sorted iteration over a list of keys in table.
 ---------------------------------------------------------------------------
+local _G = {}
 assert(not _G.spairs, "Symbol 'spairs' already defined")
 function _G.spairs(t)
   local keys = getkeys(t)
