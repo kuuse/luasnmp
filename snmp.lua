@@ -1,20 +1,20 @@
 ------------------------------------------------------------------------------
 --
--- snmp.lua : SNMP primitives
+-- luasnmp.lua : SNMP primitives
 --
 ------------------------------------------------------------------------------
 
-local snmp = require "snmp.core"
-local mib = snmp.mib
+local luasnmp = require "luasnmp.core"
+local mib = luasnmp.mib
 
 -- Lua version compatibility
 local unpack = unpack or table.unpack
 
 if string.find(_VERSION, "5.1") then
-   module("snmp", package.seeall)
+   module("luasnmp", package.seeall)
 else
-   _ENV = setmetatable(snmp, {
-                          __index = _G
+   _ENV = setmetatable(luasnmp, {
+                         __index = _G
    })
 end
 ------------------------------------------------------------------------------
@@ -887,12 +887,12 @@ function __trap(session, msg)
    -- debugging: uncomment if desired
    --print(string.format("  session.name=%s", session.name))
    --print(string.format("  generic_trap(): msg = %q", msg))
-   --print(string.format("  netsnmp version: %s", snmp.getversion()))
-   --print(string.format("  snmp._SYSTEM: %s", snmp._SYSTEM))
+   --print(string.format("  netsnmp version: %s", luasnmp.getversion()))
+   --print(string.format("  luasnmp._SYSTEM: %s", luasnmp._SYSTEM))
 
    -- The message may ne different for Cygwin and Linux.
    -- We keep the differentiation even if not really required.
-   if snmp._SYSTEM == "Cygwin"  and snmp.getversion() > "5.3" then
+   if luasnmp._SYSTEM == "Cygwin"  and luasnmp.getversion() > "5.3" then
       string.gsub(msg, 
 		  "^%s*([%w%.]+)%s+(%w+):%s*%[[%d%.]+%]%-%>%[([%d%.]+)%]:(%d+)%s+([^%s]+)%s+([^%s]+)%s+(.*)",
 		  function(...) 
@@ -901,7 +901,7 @@ function __trap(session, msg)
       -- debugging:
       -- print(string.format("  host=%q, proto=%q, ip=%q, port=%q, uptimeName=%q, uptimeVal=%q, vbs=%q",
       -- host, proto, ip, port, uptimeName, uptimeVal, vbs))
-   elseif snmp.getversion() > "5.5" then
+   elseif luasnmp.getversion() > "5.5" then
       string.gsub(msg, 
 		  -- Example msg:
 		  -- " localhost UDP: [127.0.0.1]->[127.0.0.1]:-6577 \
@@ -931,9 +931,9 @@ function __trap(session, msg)
    if dip == session.peer_ip or true then
       -- Convert variable bindings
       local vlist
-      if string.find(snmp.getversion(), "5.4") then
+      if string.find(luasnmp.getversion(), "5.4") then
         vlist = {{oid = uptimeName, type = mib.type("sysUpTime"), value = uptimeVal}}
-      elseif string.find(snmp.getversion(), "5.3") then
+      elseif string.find(luasnmp.getversion(), "5.3") then
         -- Note: we don't get a reasonable type value for sysUpTimeInstance in net-snmp 5.3
         vlist = {{oid=uptimeName, type=mib.type("sysUpTime"), value = uptimeVal}}
       else
@@ -1008,7 +1008,7 @@ end
 -- @param key string - Hexstring (may contain embedded zeros).
 -- @param len number - Length of the (sub)string to evaluate.
 -- @return String containing a presentation of the hexstring that can
---         be evaluated by snmp.set(SESSION, VAR)
+--         be evaluated by luasnmp.set(SESSION, VAR)
 ---------------------------------------------------------------------------
 function sprintkey(key, len)
   local slen = string.len(key)
@@ -1183,7 +1183,7 @@ function newpassword(session, oldpw, newpw, flag, user, engineID)
 				    string.len(engineID), key2oid(engineID),
 				    string.len(user), key2oid(user)), 
 		      key2octet(keychg, keychglen),
-		      snmp.TYPE_OCTETSTR)
+		      luasnmp.TYPE_OCTETSTR)
     table.insert(vl, vb)
   end
   if dopriv then
@@ -1192,7 +1192,7 @@ function newpassword(session, oldpw, newpw, flag, user, engineID)
  				    string.len(engineID), key2oid(engineID),
  				    string.len(user), key2oid(user)),
 		      key2octet(keychgpriv, keychgprivlen),
-		      snmp.TYPE_OCTETSTR)
+		      luasnmp.TYPE_OCTETSTR)
   end
   -- set request
   vl, err, errindex = session:set(vl)
@@ -1587,7 +1587,7 @@ end
 ------------------------------------------------------------------------------
 -- Table with session properties accessible using session.NAME using
 -- __index metamethod. Used to retrieve C internals provided by 
--- snmp.details() function.
+-- luasnmp.details() function.
 ------------------------------------------------------------------------------
 local sessionproperties = {
   contextEngineID = function(self) return details(self).contextEngineID end,
@@ -1826,7 +1826,7 @@ function open (session)
   if not intsess then return nil, ip_err end
   
   -- Informationals
-  session.verid = "LuaSNMP " .. snmp.version
+  session.verid = "LuaSNMP " .. luasnmp.version
   session.internal = intsess
   session.peer_ip = ip_err
   session.getversion = function(self)

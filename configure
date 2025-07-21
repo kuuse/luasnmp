@@ -92,6 +92,7 @@ By default, '$LIBNAME_DEFAULT' is installed in the following directory tree:
 
 Fine tuning of the installation directories:
   --libname=NAME          LuaSnmp common name [luasnmp]
+                          WARNING! Currently, if changing the default name, 'nm_snmp.c' has to be patched manually!
   --libdir=DIR            Lua common module library dir [<PREFIX>/lib/lua/<LUA_VERSION>]
   --libsubdir=DIR         LuaSnmp module subdirectory [<LIBNAME>]
   --libfilename=FILENAME  LuaSnmp library file name [core.$EXT]

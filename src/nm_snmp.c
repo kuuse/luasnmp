@@ -3082,9 +3082,17 @@ static const luaL_Reg funcs[] = {
 
 extern const luaL_Reg mibfuncs[];
 
-#define luaopen_snmpcore luaopen_snmp_core
+/*
+  TODO: When using './configure --libname=SOME_NAME', this file must be patched, changing the define:
+  #define luaopen_luasnmpcore luaopen_luasnmp_core => #define luaopen_$SOME_NAMEcore luaopen_$SOME_NAME_core
+*/
+#define luaopen_luasnmpcore luaopen_luasnmp_core
 
-LUALIB_API int luaopen_snmp_core(lua_State *L) {
+/*
+  TODO: When using './configure --libname=SOME_NAME', this file must be patched, changing the method name:
+  LUALIB_API int luaopen_luasnmp_core(lua_State *L) => LUALIB_API int luaopen_$SOME_NAME_core(lua_State *L)
+*/
+LUALIB_API int luaopen_luasnmp_core(lua_State *L) {
 #if LUA_VERSION_NUM > 501
   lua_newtable(L);                     /* mtab */
   luaL_setfuncs(L, funcs, 0); 

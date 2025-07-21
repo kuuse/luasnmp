@@ -13,11 +13,12 @@ Quick install from scratch:
     ./setup.sh
     ./mylua walk-v2.lua 127.0.0.1 public system.sysDescr
     ./mylua walk-v3.lua 127.0.0.1 noAuthNoPriv SHA AES myuser myauthpassphrase myprivpassphrase system.sysDescr
+    # 'get-v3.lua' does not need 'mylua', as the custom 'package.path' and 'package.cpath' are included in the script itself. 
+    ./get-v3.lua -v3 -l authPriv -u myuser-SHA-512-AES128 -a SHA-512 -A myauth-SHA-512 -x AES128 -X mypriv-AES128 172.17.0.10 system.sysDescr.0
 
 See [scripts/README.md](scripts/README.md) for details.
 
 ## How to use 'configure'
-
 
 The `help` option should be self-explanatory:
 
@@ -78,6 +79,13 @@ If Nmap was built from a package instead, the Lua header files and lib will not 
 In such a case, the Lua version must match the Nmap Lua version.
 
 As with any Lua script, adjust `package.path` and `package.cpath` as needed in the calling NSE script to find the `luasnmp` module.
+
+### A word of warning about changing the module name with 'configure'
+
+The `configure` option `--libname=NAME` defaults to `luasnmp`.  
+The original module name was `snmp`, but this may clash with the Nmap NSE lib with the same name.   
+It is possible to change the module name to something else, but currently the name is hardcoded in `src/nm_snmp.c`, so this file must be patched manually if the module name is changed.  
+Check comments in `src/nm_snmp.c` for details.
 
 ## Run `snmpwalk` using Lua
 
