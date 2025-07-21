@@ -6,12 +6,12 @@ all: $(LUASNMP_SO)
 
 $(LUASNMP_SO): $(OBJS)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
-	mkdir -p ../snmp
-	cp $(LUASNMP_SO) ../snmp/core.$(EXT)
+	mkdir -p ../$(INSTALL_LIBSUBDIR)
+	cp $(LUASNMP_SO) ../$(INSTALL_LIBSUBDIR)/core.$(EXT)
 
 clean:
 	rm -f $(OBJS) $(LUASNMP_SO) 
-	rm -rf ../snmp
+	rm -rf ../$(INSTALL_LIBSUBDIR)
 	rm -rf makefile.deps
 
 depend: makefile.deps

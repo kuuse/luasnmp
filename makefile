@@ -13,15 +13,15 @@ uclean: clean
 .PHONY: install uninstall install-doc uninstall-doc 
 
 install: all
-	mkdir -p $(INSTALL_SHARE) $(INSTALL_LIB)/snmp
-	$(INSTALL_DATA) snmp.lua $(INSTALL_SHARE)
-	$(INSTALL_DATA) trapd.lua $(INSTALL_SHARE)
-	cd src && $(INSTALL_COPY) snmp.$(EXT).$(VERSION) $(INSTALL_LIB)/snmp/core.$(EXT)
+	mkdir -p $(INSTALL_SHARE) $(INSTALL_LIB)/$(INSTALL_LIBSUBDIR)
+	$(INSTALL_DATA) snmp.lua $(INSTALL_SHARENAME)
+	$(INSTALL_DATA) trapd.lua $(INSTALL_SHARENAME)
+	cd src && $(INSTALL_COPY) $(LUASNMP_SO) $(INSTALL_LIB)/$(INSTALL_LIBSUBDIR)/$(INSTALL_LIBFILENAME)
 
 uninstall:
-	rm -rf $(INSTALL_SHARE)/snmp.lua
-	rm -rf $(INSTALL_SHARE)/trapd.lua
-	rm -rf $(INSTALL_LIB)/snmp
+	rm -rf $(INSTALL_SHARENAME)
+	rm -rf $(INSTALL_SHARENAME)
+	rm -rf $(INSTALL_LIB)/$(INSTALL_LIBSUBDIR)
 
 install-doc:
 	mkdir -p $(INSTALL_DOC)/html
