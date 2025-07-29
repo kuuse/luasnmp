@@ -8,7 +8,6 @@ SCRIPT_PATH=$(dirname "${SCRIPT_NAME}")
 LUASNMP_GIT_URL=https://github.com/kuuse/luasnmp.git
 LUASNMP_GIT_LOCAL_ROOT_DIR="${SCRIPT_PATH}/git"
 LUASNMP_GIT_LOCAL_SRC_DIR="${LUASNMP_GIT_LOCAL_ROOT_DIR}/luasnmp"
-###LUASNMP_PATCH_DIR="${SCRIPT_PATH}/patches"
 LUASNMP_INSTALL_DIR="${SCRIPT_PATH}/luasnmp"
 
 NET_SNMP_PATH="${SCRIPT_PATH}/net-snmp"
@@ -24,15 +23,9 @@ printf "LUASNMP_INSTALL_DIR=%s\n" "$LUASNMP_INSTALL_DIR"
 printf "%s\n" "--------------------------------------------------------------------------------"
 
 rm -rf "$LUASNMP_GIT_LOCAL_SRC_DIR" && mkdir -p "$LUASNMP_GIT_LOCAL_ROOT_DIR" && cd "$LUASNMP_GIT_LOCAL_ROOT_DIR" && git clone --depth 1 $LUASNMP_GIT_URL && cd -
-# # Apply patches
-# cp "$LUASNMP_PATCH_DIR/config" "$LUASNMP_GIT_LOCAL_SRC_DIR"
-# cp "$LUASNMP_PATCH_DIR/configure" "$LUASNMP_GIT_LOCAL_SRC_DIR" && chmod 755 "$LUASNMP_GIT_LOCAL_SRC_DIR/configure"
-# cp $LUASNMP_PATCH_DIR/*.lua "$LUASNMP_GIT_LOCAL_SRC_DIR"
-# cp $LUASNMP_PATCH_DIR/src/* "$LUASNMP_GIT_LOCAL_SRC_DIR/src"
 cd "$LUASNMP_GIT_LOCAL_SRC_DIR" && \
     ./configure \
     --with-net-snmp-config=../../net-snmp/bin/net-snmp-config \
-    --with-lua=/home/johan/fossil/nest/lua/lua/bin/lua \
     --prefix="$LUASNMP_INSTALL_DIR" && \
     make clean && \
     make LV=5.4 && \
