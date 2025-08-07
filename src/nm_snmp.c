@@ -982,12 +982,12 @@ static int nm_snmp_open(lua_State *L) {
       memcpy((char *)&peer_addr.s_addr, hp->h_addr, hp->h_length);
     }
   }
-#ifdef REMOVE_THIS_2
+/* #ifdef REMOVE_THIS_2 */
   lua_pushstring(L, "port");
   lua_gettable(L, -2);
   nm_cmu_session.remote_port = lua_tonumber(L, -1);
   lua_remove(L, -1);
-#endif
+/* #endif */
   lua_pushstring(L, "localport");
   lua_gettable(L, -2);
   nm_cmu_session.local_port = lua_tonumber(L, -1);
@@ -1065,10 +1065,10 @@ static int nm_snmp_open(lua_State *L) {
   nm_cmu_session.callback = nm_snmp_callback;
   nm_session->L = L;
   nm_cmu_session.callback_magic = (void *)nm_session;
-#ifdef REMOVE_THIS_2
-  netsnmp_ds_set_int(NETSNMP_DS_LIBRARY_ID, NETSNMP_DS_LIB_DEFAULT_PORT, 
+/* #ifdef REMOVE_THIS_2 */
+  netsnmp_ds_set_int(NETSNMP_DS_LIBRARY_ID, NETSNMP_DS_LIB_DEFAULT_PORT,
   		     nm_cmu_session.remote_port);
-#endif
+/* #endif */
   nm_session->cmu_session = snmp_open(&nm_cmu_session);
   if (nm_cmu_session.securityEngineID)
     free(nm_cmu_session.securityEngineID);
