@@ -1,8 +1,17 @@
 include config
 
 .PHONY: all clean depend uclean
-all:
+all: prereq
 	cd src && $(MAKE) $@
+
+.PHONY: prereq
+prereq:
+	@if [ ! -f "$(NETSNMP_CONFIG)" ]; then\
+        echo "ERROR:";\
+        echo "net-snmp-config ($(NETSNMP_CONFIG)) is required but not found!";\
+        echo "Either run './configure' to auto-detect 'net-snmp-config', or edit 'config' to set a hard-coded path.";\
+        exit 1;\
+    fi
 
 clean depend:
 	cd src && $(MAKE) $@
@@ -47,7 +56,6 @@ testtrap:
 
 testtrapd:
 	$(LUABIN) -e "trapyes, informyes = true, true" test_trap.lua debug
-
 
 .PHONY: tag tag-git tag-cvs tag-svn
 tag:

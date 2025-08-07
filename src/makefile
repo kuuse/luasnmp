@@ -1,6 +1,8 @@
 include ../config
 
 OBJS += nm_snmp.o nm_util.o nm_trap.o nm_mib.o nm_c64.o except.o
+# Set INSTALL_LIBSUBDIR to ĺuasnmp'as fallback if not set.
+INSTALL_LIBSUBDIR ?= luasnmp
 
 all: $(LUASNMP_SO)
 
@@ -10,7 +12,7 @@ $(LUASNMP_SO): $(OBJS)
 	cp $(LUASNMP_SO) ../$(INSTALL_LIBSUBDIR)/core.$(EXT)
 
 clean:
-	rm -f $(OBJS) $(LUASNMP_SO) 
+	rm -f $(OBJS) $(LUASNMP_SO)
 	rm -rf ../$(INSTALL_LIBSUBDIR)
 	rm -rf makefile.deps
 

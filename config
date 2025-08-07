@@ -115,3 +115,32 @@ DISTARCH = $(DISTNAME).tar.gz
 CVSMODULE = lua/lua-$(LV)/modules/$(MODULE)
 SVNMODULE = $(MODULE)-$(VERSION)
 
+# ================================================================================
+# Variables added by ./configure:
+# ================================================================================
+# 'luasnmp' installation
+INSTALL_ROOT           = /usr
+INSTALL_LIBNAME        = luasnmp
+INSTALL_LIB            = /usr/lib/lua/5.4
+INSTALL_LIBSUBDIR      = luasnmp
+INSTALL_LIBFILENAME    = core.so
+INSTALL_SHARE          = /usr/share/lua/5.4
+INSTALL_SHARENAME      = /usr/share/lua/5.4/luasnmp.lua
+INSTALL_SHARENAMETRAPD = /usr/share/lua/5.4/luatrapd.lua
+INSTALL_DOC            = /usr/share/doc/luasnmp
+# Lua paths
+LUA                    = /home/johan/fossil/nest/lua/lua
+LV                     = 5.4
+V                      = 54
+LUABIN                 = /home/johan/fossil/nest/lua/lua/bin/lua
+LUAINC                 = /home/johan/fossil/nest/lua/lua/include
+LUALIB                 = /home/johan/fossil/nest/lua/lua/lib/liblua.a
+LDFLAGS                =  -O -shared -fPIC -Wl,-rpath,/home/johan/fossil/nest/lua/snmp/net-snmp/lib
+# Net-SNMP paths
+NETSNMP_CONFIG         = /home/johan/fossil/nest/lua/snmp/net-snmp/bin/net-snmp-config
+NETSNMP_LIB_DIR        = /home/johan/fossil/nest/lua/snmp/net-snmp/bin/net-snmp-config
+# Misc.
+EXT                    = so
+# Targets
+LUASNMP_SO             = luasnmp.so.$(VERSION)
+# ================================================================================
