@@ -129,6 +129,8 @@ u_char *usmUserEngineID = NULL;
 
 #define MAX_PACKET_LENGTH PACKET_LENGTH
 
+#define MAX_HOST_LEN 255
+
 /*-----------------------------------------------------------------------------
  * Functions copied from net-snmp library.
  *  - We need them in order to process traps.
@@ -681,6 +683,8 @@ static void nm_snmp_trap(lua_State *L, u_char *packet, int length, struct sockad
 #endif
 static Tsession *nm_snmp_getsession(lua_State *L);
 
+static size_t nm_snmp_getcolonpos(const char *peername);
+
 /*-----------------------------------------------------------------------------
  * Function wrapped to Lua
  *----------------------------------------------------------------------------*/
@@ -722,6 +726,8 @@ static int nm_snmp_open(lua_State *L) {
   char *peername;
   struct in_addr peer_addr;
   char *Apsz, *Xpsz;
+
+  double timeout_with_decimals = 0;
 
   /* Get a table from Lua stack */
   if (!lua_istable(L, -1)) {
@@ -948,11 +954,12 @@ static int nm_snmp_open(lua_State *L) {
 
   lua_pushstring(L, "timeout");
   lua_gettable(L, -2);
-  nm_cmu_session.timeout = lua_tonumber(L, -1);
+  /* Accept timeout with decimals */
+  timeout_with_decimals = lua_tonumber(L, -1);
   lua_remove(L, -1);
 
   /* timeout in microseconds */
-  nm_cmu_session.timeout *= DEFAULT_TIMEOUT;
+  nm_cmu_session.timeout = timeout_with_decimals * DEFAULT_TIMEOUT;
 
   lua_pushstring(L, "retries");
   lua_gettable(L, -2);
@@ -970,11 +977,20 @@ static int nm_snmp_open(lua_State *L) {
     flg_nopeer = TRUE;
     peer_addr.s_addr = 0;
   } else {
+    /* Check whether peername is in the format 'host' or 'host:port' */
+    char host[MAX_HOST_LEN+1] = "";
+    const size_t host_len = nm_snmp_getcolonpos(peername);
     flg_nopeer = FALSE;
-    if (inet_aton((const char *) peername, &peer_addr) == 0){
+    if (host_len > MAX_HOST_LEN) {
+      lua_pushnil(L);
+      lua_pushstring(L, "snmp: host name too long");
+      return 2;
+    }
+    strncpy(host, peername, host_len);
+    if (inet_aton((const char *) host, &peer_addr) == 0){
       /* invalid dot notation - try to resolve dns */
       struct hostent *hp;
-      if ((hp = gethostbyname(peername)) == NULL) {
+      if ((hp = gethostbyname(host)) == NULL) {
         lua_pushnil(L);
         lua_pushstring(L, "snmp: bad peer address");
         return 2;
@@ -982,12 +998,12 @@ static int nm_snmp_open(lua_State *L) {
       memcpy((char *)&peer_addr.s_addr, hp->h_addr, hp->h_length);
     }
   }
-/* #ifdef REMOVE_THIS_2 */
+#ifdef REMOVE_THIS_2
   lua_pushstring(L, "port");
   lua_gettable(L, -2);
   nm_cmu_session.remote_port = lua_tonumber(L, -1);
   lua_remove(L, -1);
-/* #endif */
+#endif
   lua_pushstring(L, "localport");
   lua_gettable(L, -2);
   nm_cmu_session.local_port = lua_tonumber(L, -1);
@@ -1065,10 +1081,10 @@ static int nm_snmp_open(lua_State *L) {
   nm_cmu_session.callback = nm_snmp_callback;
   nm_session->L = L;
   nm_cmu_session.callback_magic = (void *)nm_session;
-/* #ifdef REMOVE_THIS_2 */
+#ifdef REMOVE_THIS_2
   netsnmp_ds_set_int(NETSNMP_DS_LIBRARY_ID, NETSNMP_DS_LIB_DEFAULT_PORT,
   		     nm_cmu_session.remote_port);
-/* #endif */
+#endif
   nm_session->cmu_session = snmp_open(&nm_cmu_session);
   if (nm_cmu_session.securityEngineID)
     free(nm_cmu_session.securityEngineID);
@@ -3153,3 +3169,13 @@ static Tsession *nm_snmp_getsession(lua_State *L) {
   return(nxt_sess);
 }
 
+/*-----------------------------------------------------------------------------
+ * nm_snmp_getcolonpos
+ *
+ *  Return   : Index of colon separator if found, MAX_HOST_LEN if not found.
+ *  Function : This function is used to extract 'host' if 'peername' is in the format 'host:port'.
+ *----------------------------------------------------------------------------*/
+size_t nm_snmp_getcolonpos(const char *peername) {
+  const char *pos = strchr(peername, ':');
+  return (pos ? (int)(pos - peername) : MAX_HOST_LEN);
+}
