@@ -175,9 +175,9 @@ local NOAUTH = 1
 local AUTHNOPRIV = 2
 local AUTHPRIV = 3
 local seclevels = {
-  ["noAuthNoPriv"] = NOAUTH, 
-  ["authNoPriv"] = AUTHNOPRIV, 
-  ["authPriv"] = AUTHPRIV
+  ["NOAUTHNOPRIV"] = NOAUTH,
+  ["AUTHNOPRIV"] = AUTHNOPRIV,
+  ["AUTHPRIV"] = AUTHPRIV
 }
 local secmodels = {
   ["SNMPv1"] = 1,
@@ -1500,9 +1500,10 @@ function createaccess(session, group, secmodel, seclevel, match,
 		      readview, writeview, notifyview, context)
   if type(secmodel) ~= "string" then return FAIL(BADARG, "secmodel") end
   secmodel = secmodels[string.upper(secmodel)]
-  if type(seclevel) ~= "string" then return FAIL(BADARG, "secname") end
-  if not seclevels[seclevel] then return FAIL(BADARG, "seclevel") end
-  seclevel = seclevels[seclevel]
+  if type(seclevel) ~= "string" then return FAIL(BADARG, "seclevel") end
+  local seclevelupper = string.upper(seclevel)
+  if not seclevels[seclevelupper] then return FAIL(BADARG, "seclevel") end
+  seclevel = seclevels[seclevelupper]
   if type(match) ~= "string" then return FAIL(BADARG, "match") end
   local nmatch
   if match == "exact" then
@@ -1534,11 +1535,10 @@ end
 function deleteaccess(session, group, secmodel, seclevel, context)
   if type(secmodel) ~= "string" then return FAIL(BADARG, "secmodel") end
   secmodel = secmodels[string.upper(secmodel)]
-  if type(seclevel) ~= "string" or not seclevels[seclevel] then 
-    return FAIL(BADARG, "seclevel") 
-  end
-  seclevel = seclevels[seclevel]
-
+  if type(seclevel) ~= "string" then return FAIL(BADARG, "seclevel") end
+  local seclevelupper = string.upper(seclevel)
+  if not seclevels[seclevelupper] then return FAIL(BADARG, "seclevel") end
+  seclevel = seclevels[seclevelupper]
   if not context then context = "" end
 
   local inst = instance(group, context, secmodel, seclevel)
@@ -1673,6 +1673,7 @@ function open (session)
     if not session.securityLevel then
       session.securityLevel = config.defSecurityLevel or "authNoPriv"
     end
+    session.securityLevel = string.upper(session.securityLevel)
     if not seclevels[session.securityLevel] then
       return FAIL(BADSECLEVEL)
     else
